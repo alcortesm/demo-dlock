@@ -18,7 +18,7 @@ const maxSleepMsecs = 100
 
 // Safe implements a concurrent safe worker.
 type Safe struct {
-	unsafe *unsafe.UnSafe
+	unsafe *unsafe.Unsafe
 	lock   dlock.DLock
 }
 

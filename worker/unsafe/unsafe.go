@@ -14,17 +14,17 @@ import (
 
 const maxSleepMsecs = 100
 
-// UnSafe implements a worker that does not care about locking the shared
+// Unsafe implements a worker that does not care about locking the shared
 // resource.
-type UnSafe struct {
+type Unsafe struct {
 	name   int
 	writer io.Writer
 }
 
 // Returns a new unsafe worker, named after the given number (see the
 // Strig method).  It will use the given writer as the shared resource.
-func NewWorker(name int, writer io.Writer) *UnSafe {
-	return &UnSafe{
+func NewWorker(name int, writer io.Writer) *Unsafe {
+	return &Unsafe{
 		name:   name,
 		writer: writer,
 	}
@@ -33,12 +33,12 @@ func NewWorker(name int, writer io.Writer) *UnSafe {
 // Implements fmt.Stringer.  Workers are identified by their name, which
 // is a number for easier use; it is returned here as part of the
 // identification string of each worker for debugging purposes.
-func (us *UnSafe) String() string {
+func (us *Unsafe) String() string {
 	return fmt.Sprintf("worker %d", us.name)
 }
 
 // Work implements Worker.
-func (us *UnSafe) Work(done chan<- error) {
+func (us *Unsafe) Work(done chan<- error) {
 	var err error
 	defer func() {
 		done <- err
