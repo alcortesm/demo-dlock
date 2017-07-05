@@ -4,34 +4,61 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"math/rand"
 	"os"
-	"time"
+
+	"github.com/alcortesm/demo-dlock/worker"
+	"github.com/alcortesm/demo-dlock/worker/unsafe"
 )
 
 const (
+	nRuns          = 10
 	nWriters       = 2
 	tempFilePrefix = "demo-dlock-"
 )
 
 func main() {
-	do()
+	safe := false
+	nGarbled := 0
+	fmt.Printf("Running %d experiments with %d writers each\n",
+		nRuns, nWriters)
+	for i := 0; i < nRuns; i++ {
+		garbled, path, err := run(safe)
+		if err != nil {
+			log.Fatalf("run %d: %s\n", i, err)
+		}
+		if garbled {
+			fmt.Fprintf(os.Stderr,
+				"run %d: text is garbled: %s\n", i, path)
+			nGarbled++
+		}
+	}
+	if nGarbled != 0 {
+		fmt.Printf("FAILED: %d garbled resources\n", nGarbled)
+		os.Exit(1)
+	}
+	fmt.Println("OK: all experiments were succesfull")
+	os.Exit(0)
 }
 
-func do() {
+// returns if the text is garbled after the running several workers in
+// parallel and the path to the temporal file used as a shared resource.
+func run(safe bool) (garbled bool, path string, err error) {
 	file, err := tempFile()
 	if err != nil {
-		log.Fatal("cannot create temporary file:", err)
+		return false, "", fmt.Errorf("cannot create temp file: ", err)
 	}
 
 	done := make(chan bool, nWriters)
 
 	for i := 0; i < nWriters; i++ {
-		w := writer{
-			name: i,
-			done: done,
+		var w worker.Worker
+		if safe {
+			return false, file.Name(),
+				fmt.Errorf("TODO safe workers not implemented yet")
+		} else {
+			w = unsafe.NewWorker(i, file, done)
 		}
-		go w.write(file)
+		go w.Work()
 	}
 
 	for i := 0; i < nWriters; i++ {
@@ -40,9 +67,12 @@ func do() {
 
 	file.Close()
 
-	if err = dump(file.Name()); err != nil {
-		log.Fatal("cannot dump temporary file:", err)
+	garbled, err = worker.IsGarbled(file.Name())
+	if err != nil {
+		return false, file.Name(), fmt.Errorf(
+			"%s: cannot check if garbled: %s", file.Name(), err)
 	}
+	return garbled, file.Name(), nil
 }
 
 func tempFile() (*os.File, error) {
@@ -53,37 +83,4 @@ func tempFile() (*os.File, error) {
 	}
 
 	return path, nil
-}
-
-type writer struct {
-	name int
-	done chan<- bool
-}
-
-func (w writer) String() string {
-	return fmt.Sprintf("-%d-", w.name)
-}
-
-func (w writer) write(file *os.File) error {
-	defer func() {
-		w.done <- true
-	}()
-	fmt.Printf("[writer %d] starting to write\n", w.name)
-	defer fmt.Printf("[writer %d] finished writing\n", w.name)
-	for i := 0; i < 10; i++ {
-		if _, err := file.WriteString(w.String()); err != nil {
-			return fmt.Errorf("writer %d: %s", w.name, err)
-		}
-		randSleep()
-	}
-	return nil
-}
-
-func randSleep() {
-	msec := rand.Int31n(10)
-	time.Sleep(time.Duration(msec) * time.Millisecond)
-}
-
-func dump(file *os.File) err {
-	data, err ;= ioutil.ReadAll()
 }
