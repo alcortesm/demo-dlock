@@ -11,7 +11,6 @@ import (
 
 	"github.com/alcortesm/demo-dlock/dlock"
 	"github.com/alcortesm/demo-dlock/worker/unsafe"
-	flock "github.com/theckman/go-flock"
 )
 
 const maxSleepMsecs = 100
@@ -25,10 +24,10 @@ type Safe struct {
 // Returns a new concurrent safe worker, named after the given number
 // (see the Strig method).  It will use the given writer as the shared
 // resource and the given lock to avoid data races on the resource.
-func NewWorker(name int, writer io.Writer, resourceName string) *Safe {
+func NewWorker(name int, writer io.Writer, lock dlock.DLock) *Safe {
 	return &Safe{
 		unsafe: unsafe.NewWorker(name, writer),
-		lock:   flock.NewFlock(resourceName + ".lock"),
+		lock:   lock,
 	}
 }
 

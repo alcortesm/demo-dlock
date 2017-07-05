@@ -8,6 +8,7 @@ import (
 	"github.com/alcortesm/demo-dlock/worker"
 	"github.com/alcortesm/demo-dlock/worker/safe"
 	"github.com/alcortesm/demo-dlock/worker/unsafe"
+	flock "github.com/theckman/go-flock"
 )
 
 const (
@@ -109,7 +110,8 @@ func run(implementation string, shared *os.File) error {
 		case argUnsafe:
 			w = unsafe.NewWorker(i, shared)
 		case argFlock:
-			w = safe.NewWorker(i, shared, shared.Name())
+			l := flock.NewFlock(shared.Name() + ".lock")
+			w = safe.NewWorker(i, shared, l)
 		case argEtcd:
 			return fmt.Errorf("TODO no etcd implementation yet")
 		default:
