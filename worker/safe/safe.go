@@ -18,13 +18,13 @@ const maxSleepMsecs = 100
 // Safe implements a concurrent safe worker.
 type Safe struct {
 	unsafe *unsafe.Unsafe
-	lock   dlock.DLock
+	lock   dlock.DLocker
 }
 
 // Returns a new concurrent safe worker, named after the given number
 // (see the Strig method).  It will use the given writer as the shared
 // resource and the given lock to avoid data races on the resource.
-func NewWorker(name int, writer io.Writer, lock dlock.DLock) *Safe {
+func NewWorker(name int, writer io.Writer, lock dlock.DLocker) *Safe {
 	return &Safe{
 		unsafe: unsafe.NewWorker(name, writer),
 		lock:   lock,

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/alcortesm/demo-dlock/dlock/etcd"
 	"github.com/alcortesm/demo-dlock/dlock/flock"
 	"github.com/alcortesm/demo-dlock/worker"
 	"github.com/alcortesm/demo-dlock/worker/safe"
@@ -12,8 +13,8 @@ import (
 )
 
 const (
-	nRuns          = 10
-	nWriters       = 10
+	nRuns          = 2
+	nWriters       = 3
 	tempFilePrefix = "demo-dlock-"
 	argUnsafe      = "unsafe"
 	argFlock       = "flock"
@@ -113,7 +114,8 @@ func run(implementation string, shared *os.File) error {
 			l := flock.NewDLock(shared.Name())
 			w = safe.NewWorker(i, shared, l)
 		case argEtcd:
-			return fmt.Errorf("TODO no etcd implementation yet")
+			l := etcd.NewDLock(shared.Name())
+			w = safe.NewWorker(i, shared, l)
 		default:
 			return fmt.Errorf("unkown implementation: %s", implementation)
 		}
