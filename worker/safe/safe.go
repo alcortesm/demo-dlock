@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/alcortesm/demo-dlock/worker/unsafe"
 	flock "github.com/theckman/go-flock"
 )
 
@@ -16,8 +17,7 @@ const maxSleepMsecs = 100
 
 // Safe implements a concurrent safe worker.
 type Safe struct {
-	name   int
-	writer io.Writer
+	unsafe *unsafe.UnSafe
 	lock   *flock.Flock
 }
 
@@ -26,8 +26,7 @@ type Safe struct {
 // resource and the given lock to avoid data races on the resource.
 func NewWorker(name int, writer io.Writer, resourceName string) *Safe {
 	return &Safe{
-		name:   name,
-		writer: writer,
+		unsafe: unsafe.NewWorker(name, writer),
 		lock:   flock.NewFlock(resourceName + ".lock"),
 	}
 }
@@ -36,17 +35,15 @@ func NewWorker(name int, writer io.Writer, resourceName string) *Safe {
 // is a number for easier use; it is returned here as part of the
 // identification string of each worker for debugging purposes.
 func (s *Safe) String() string {
-	return fmt.Sprintf("worker %d", s.name)
+	return s.unsafe.String()
 }
 
 // Work implements Worker.
 func (s *Safe) Work(done chan<- bool) error {
-	defer func() {
-		done <- true
-	}()
 	for {
 		locked, err := s.lock.TryLock()
 		if err != nil {
+			done <- true
 			return fmt.Errorf("%s: trying to lock: %s", s, err)
 		}
 		if locked {
@@ -54,15 +51,7 @@ func (s *Safe) Work(done chan<- bool) error {
 		}
 		randSleep(10)
 	}
-	//fmt.Printf("[%s] starting to work\n", us)
-	//defer fmt.Printf("[%s] finished working\n", us)
-	if _, err := s.writer.Write([]byte{'<'}); err != nil {
-		return fmt.Errorf("%s: writting '<': %s", s, err)
-	}
-	randSleep(maxSleepMsecs)
-	if _, err := s.writer.Write([]byte{'>'}); err != nil {
-		return fmt.Errorf("%s: writting '>': %s", s, err)
-	}
+	s.unsafe.Work(done)
 	if err := s.lock.Unlock(); err != nil {
 		return fmt.Errorf("%s: unlocking: %s", s, err)
 	}
