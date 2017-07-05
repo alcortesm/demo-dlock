@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/alcortesm/demo-dlock/dlock/flock"
 	"github.com/alcortesm/demo-dlock/worker"
 	"github.com/alcortesm/demo-dlock/worker/safe"
 	"github.com/alcortesm/demo-dlock/worker/unsafe"
-	flock "github.com/theckman/go-flock"
 )
 
 const (
@@ -110,7 +110,7 @@ func run(implementation string, shared *os.File) error {
 		case argUnsafe:
 			w = unsafe.NewWorker(i, shared)
 		case argFlock:
-			l := flock.NewFlock(shared.Name() + ".lock")
+			l := flock.NewDLock(shared.Name())
 			w = safe.NewWorker(i, shared, l)
 		case argEtcd:
 			return fmt.Errorf("TODO no etcd implementation yet")

@@ -44,16 +44,10 @@ func (s *Safe) Work(done chan<- error) {
 	defer func() {
 		done <- err
 	}()
-	for {
-		locked, err := s.lock.TryLock()
-		if err != nil {
-			err = fmt.Errorf("%s: trying to lock: %s", s, err)
-			return
-		}
-		if locked {
-			break
-		}
-		randSleep(10)
+	err = s.lock.Lock()
+	if err != nil {
+		err = fmt.Errorf("%s: trying to lock: %s", s, err)
+		return
 	}
 	inner := make(chan error)
 	go s.unsafe.Work(inner)
