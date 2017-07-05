@@ -65,7 +65,12 @@ func run(safe bool) (garbled bool, path string, err error) {
 		<-done
 	}
 
-	file.Close()
+	if _, err := file.Write([]byte{'\n'}); err != nil {
+		return false, file.Name(), err
+	}
+	if err := file.Close(); err != nil {
+		return false, file.Name(), err
+	}
 
 	garbled, err = worker.IsGarbled(file.Name())
 	if err != nil {
