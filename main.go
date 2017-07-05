@@ -18,10 +18,21 @@ const (
 
 func main() {
 	wantSafe := true
+	wantEtcd := false
 	nRunsFinished := 0
 	nGarbled := 0
-	fmt.Printf("Running %d experiments with %d writers each, safe=%t\n",
+
+	fmt.Printf("Running %d experiments with %d writers each, want safe?=%t",
 		nRuns, nWriters, wantSafe)
+	if wantSafe {
+		if wantEtcd {
+			fmt.Println(", using etcd")
+		} else {
+			fmt.Println(", using flock")
+		}
+	} else {
+		fmt.Println()
+	}
 
 	for i := 0; i < nRuns; i++ {
 		fmt.Printf("run %d: ", i)
@@ -32,7 +43,7 @@ func main() {
 		}
 		fmt.Printf("%s: ", file.Name())
 
-		err = run(wantSafe, file)
+		err = run(wantSafe, wantEtcd, file)
 		if err != nil {
 			fmt.Println("ERROR", err)
 			continue
@@ -78,12 +89,16 @@ func tempFile() (*os.File, error) {
 
 // runs several workers over the same sared resource.  The wantSafe
 // arguments controls wether to use safe workers or unsafe ones.
-func run(wantSafe bool, shared *os.File) error {
+func run(wantSafe, wantEtcd bool, shared *os.File) error {
 	done := make(chan error, nWriters)
 	for i := 0; i < nWriters; i++ {
 		var w worker.Worker
 		if wantSafe {
-			w = safe.NewWorker(i, shared, shared.Name())
+			if wantEtcd {
+				return fmt.Errorf("TODO no etcd implementation yet")
+			} else {
+				w = safe.NewWorker(i, shared, shared.Name())
+			}
 		} else {
 			w = unsafe.NewWorker(i, shared)
 		}

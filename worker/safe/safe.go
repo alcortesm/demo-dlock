@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/alcortesm/demo-dlock/dlock"
 	"github.com/alcortesm/demo-dlock/worker/unsafe"
 	flock "github.com/theckman/go-flock"
 )
@@ -18,7 +19,7 @@ const maxSleepMsecs = 100
 // Safe implements a concurrent safe worker.
 type Safe struct {
 	unsafe *unsafe.UnSafe
-	lock   *flock.Flock
+	lock   dlock.DLock
 }
 
 // Returns a new concurrent safe worker, named after the given number
