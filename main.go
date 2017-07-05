@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/alcortesm/demo-dlock/worker"
+	"github.com/alcortesm/demo-dlock/worker/safe"
 	"github.com/alcortesm/demo-dlock/worker/unsafe"
 )
 
@@ -17,7 +18,7 @@ const (
 )
 
 func main() {
-	safe := false
+	safe := true
 	nGarbled := 0
 	fmt.Printf("Running %d experiments with %d writers each\n",
 		nRuns, nWriters)
@@ -42,7 +43,7 @@ func main() {
 
 // returns if the text is garbled after the running several workers in
 // parallel and the path to the temporal file used as a shared resource.
-func run(safe bool) (garbled bool, path string, err error) {
+func run(_safe bool) (garbled bool, path string, err error) {
 	file, err := tempFile()
 	if err != nil {
 		return false, "", fmt.Errorf("cannot create temp file: ", err)
@@ -52,9 +53,8 @@ func run(safe bool) (garbled bool, path string, err error) {
 
 	for i := 0; i < nWriters; i++ {
 		var w worker.Worker
-		if safe {
-			return false, file.Name(),
-				fmt.Errorf("TODO safe workers not implemented yet")
+		if _safe {
+			w = safe.NewWorker(i, file, file.Name())
 		} else {
 			w = unsafe.NewWorker(i, file)
 		}
