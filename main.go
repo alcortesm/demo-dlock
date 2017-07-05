@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/alcortesm/demo-dlock/dlock/etcd"
 	"github.com/alcortesm/demo-dlock/dlock/flock"
 	"github.com/alcortesm/demo-dlock/worker"
 	"github.com/alcortesm/demo-dlock/worker/safe"
 	"github.com/alcortesm/demo-dlock/worker/unsafe"
+	"github.com/coreos/etcd/clientv3"
 )
 
 const (
-	nRuns          = 2
-	nWriters       = 3
+	nRuns          = 10
+	nWriters       = 10
 	tempFilePrefix = "demo-dlock-"
 	argUnsafe      = "unsafe"
 	argFlock       = "flock"
@@ -103,7 +105,24 @@ func tempFile() (*os.File, error) {
 
 // runs several workers over the same sared resource of the given
 // implementation.
-func run(implementation string, shared *os.File) error {
+func run(implementation string, shared *os.File) (err error) {
+	var client *clientv3.Client
+	if implementation == argEtcd {
+		config := clientv3.Config{
+			Endpoints:   []string{"localhost:2379"},
+			DialTimeout: 5 * time.Second,
+		}
+		client, err = clientv3.New(config)
+		if err != nil {
+			return fmt.Errorf("connecting to etcd server: %s", err)
+		}
+		defer func() {
+			if errClose := client.Close(); err == nil {
+				err = errClose
+			}
+		}()
+	}
+
 	done := make(chan error, nWriters)
 	for i := 0; i < nWriters; i++ {
 		var w worker.Worker
@@ -114,8 +133,17 @@ func run(implementation string, shared *os.File) error {
 			l := flock.NewDLock(shared.Name())
 			w = safe.NewWorker(i, shared, l)
 		case argEtcd:
-			l := etcd.NewDLock(shared.Name())
-			w = safe.NewWorker(i, shared, l)
+			lock, err := etcd.NewDLock(client, shared.Name(), 1*time.Second)
+			if err != nil {
+				return fmt.Errorf("creating lock: %s", err)
+			}
+			w = safe.NewWorker(i, shared, lock)
+			// TODO this should be done by the worker when done
+			defer func() {
+				if errClose := lock.Close(); err == nil {
+					err = errClose
+				}
+			}()
 		default:
 			return fmt.Errorf("unkown implementation: %s", implementation)
 		}

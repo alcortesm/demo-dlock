@@ -1,38 +1,48 @@
 package etcd
 
 import (
+	"context"
 	"fmt"
-	"math/rand"
 	"time"
 
-	original "github.com/theckman/go-flock"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/clientv3/concurrency"
 )
 
-const pollingMsecs = 10
-
 type DLock struct {
-	original.Flock
+	session   *concurrency.Session
+	mutex     *concurrency.Mutex
+	lockLease time.Duration
 }
 
-func NewDLock(path string) *DLock {
-	return &DLock{Flock: *original.NewFlock(path + ".lock")}
+// TODO use namespaces to avoid pfx collisions.
+
+func NewDLock(client *clientv3.Client, pfx string, lockLease time.Duration) (*DLock, error) {
+	session, err := concurrency.NewSession(client,
+		concurrency.WithContext(client.Ctx()))
+	if err != nil {
+		return nil, fmt.Errorf("creating session for etcd client")
+	}
+	return &DLock{
+		session:   session,
+		mutex:     concurrency.NewMutex(session, pfx),
+		lockLease: lockLease,
+	}, nil
 }
 
 func (dl *DLock) Lock() error {
-	for {
-		locked, err := dl.Flock.TryLock()
-		if err != nil {
-			return fmt.Errorf("trying to lock: %s", err)
-		}
-		if locked {
-			break
-		}
-		randSleep(pollingMsecs)
-	}
-	return nil
+	ctx, cancel := context.WithTimeout(context.Background(), dl.lockLease)
+	defer func() {
+		cancel()
+	}()
+	return dl.mutex.Lock(ctx)
 }
 
-func randSleep(msecs int32) {
-	msec := rand.Int31n(msecs)
-	time.Sleep(time.Duration(msec) * time.Millisecond)
+func (dl *DLock) Unlock() error {
+	return dl.mutex.Unlock(context.Background())
+}
+
+// this should go into the DLock interface.
+func (dl *DLock) Close() error {
+	return dl.session.Close()
 }

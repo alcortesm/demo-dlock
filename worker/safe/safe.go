@@ -49,13 +49,15 @@ func (s *Safe) Work(done chan<- error) {
 		err = fmt.Errorf("%s: trying to lock: %s", s, err)
 		return
 	}
+	defer func() {
+		if errUnlock := s.lock.Unlock(); err == nil && errUnlock != nil {
+			err = fmt.Errorf("%s: unlocking: %s", s, errUnlock)
+		}
+	}()
+
 	inner := make(chan error)
 	go s.unsafe.Work(inner)
 	if err = <-inner; err != nil {
-		return
-	}
-	if err = s.lock.Unlock(); err != nil {
-		err = fmt.Errorf("%s: unlocking: %s", s, err)
 		return
 	}
 }
