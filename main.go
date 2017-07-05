@@ -13,7 +13,7 @@ import (
 
 const (
 	nRuns          = 10
-	nWriters       = 2
+	nWriters       = 10
 	tempFilePrefix = "demo-dlock-"
 )
 
@@ -37,7 +37,7 @@ func main() {
 		fmt.Printf("FAILED: %d garbled resources\n", nGarbled)
 		os.Exit(1)
 	}
-	fmt.Println("OK: all experiments were succesfull")
+	fmt.Println("OK: all experiments were successfull")
 	os.Exit(0)
 }
 
