@@ -14,26 +14,18 @@ const (
 	nRuns          = 10
 	nWriters       = 10
 	tempFilePrefix = "demo-dlock-"
+	argUnsafe      = "unsafe"
+	argFlock       = "flock"
+	argEtcd        = "etcd"
 )
 
 func main() {
-	wantSafe := true
-	wantEtcd := false
+	implementation := parseArgs()
+	fmt.Printf("Running %d experiments with %d writers each, impl=",
+		nRuns, nWriters)
+	fmt.Println(implementation)
 	nRunsFinished := 0
 	nGarbled := 0
-
-	fmt.Printf("Running %d experiments with %d writers each, want safe?=%t",
-		nRuns, nWriters, wantSafe)
-	if wantSafe {
-		if wantEtcd {
-			fmt.Println(", using etcd")
-		} else {
-			fmt.Println(", using flock")
-		}
-	} else {
-		fmt.Println()
-	}
-
 	for i := 0; i < nRuns; i++ {
 		fmt.Printf("run %d: ", i)
 		file, err := tempFile()
@@ -43,7 +35,7 @@ func main() {
 		}
 		fmt.Printf("%s: ", file.Name())
 
-		err = run(wantSafe, wantEtcd, file)
+		err = run(implementation, file)
 		if err != nil {
 			fmt.Println("ERROR", err)
 			continue
@@ -77,6 +69,26 @@ func main() {
 	os.Exit(0)
 }
 
+func parseArgs() (implementation string) {
+	if len(os.Args) != 2 {
+		usage()
+	}
+	switch os.Args[1] {
+	case argUnsafe, argFlock, argEtcd:
+		return os.Args[1]
+	default:
+		usage()
+	}
+	panic("unreachable")
+}
+
+func usage() {
+	fmt.Println("usage:")
+	fmt.Printf("\t%s [%s, %s, %s]\n",
+		os.Args[0], argUnsafe, argFlock, argEtcd)
+	os.Exit(1)
+}
+
 func tempFile() (*os.File, error) {
 	const useDefaultTempDir = ""
 	path, err := ioutil.TempFile(useDefaultTempDir, tempFilePrefix)
@@ -87,20 +99,21 @@ func tempFile() (*os.File, error) {
 	return path, nil
 }
 
-// runs several workers over the same sared resource.  The wantSafe
-// arguments controls wether to use safe workers or unsafe ones.
-func run(wantSafe, wantEtcd bool, shared *os.File) error {
+// runs several workers over the same sared resource of the given
+// implementation.
+func run(implementation string, shared *os.File) error {
 	done := make(chan error, nWriters)
 	for i := 0; i < nWriters; i++ {
 		var w worker.Worker
-		if wantSafe {
-			if wantEtcd {
-				return fmt.Errorf("TODO no etcd implementation yet")
-			} else {
-				w = safe.NewWorker(i, shared, shared.Name())
-			}
-		} else {
+		switch implementation {
+		case argUnsafe:
 			w = unsafe.NewWorker(i, shared)
+		case argFlock:
+			w = safe.NewWorker(i, shared, shared.Name())
+		case argEtcd:
+			return fmt.Errorf("TODO no etcd implementation yet")
+		default:
+			return fmt.Errorf("unkown implementation: %s", implementation)
 		}
 		go w.Work(done)
 	}
