@@ -36,18 +36,21 @@ func IsGarbled(path string) (bool, error) {
 }
 
 func isGarbled(data []byte) bool {
-	lastWasLT := true
+	lastWasGT := true // when starting, assume last byte was '>'
 	for _, current := range data {
-		if lastWasLT {
+		if current == '\n' {
+			break
+		}
+		if lastWasGT {
 			if current != '<' {
 				return true
 			}
-			lastWasLT = false
+			lastWasGT = false
 		} else {
 			if current != '>' {
 				return true
 			}
-			lastWasLT = true
+			lastWasGT = true
 		}
 	}
 	return false
