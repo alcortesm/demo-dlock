@@ -38,20 +38,23 @@ func (us *UnSafe) String() string {
 }
 
 // Work implements Worker.
-func (us *UnSafe) Work(done chan<- bool) error {
+func (us *UnSafe) Work(done chan<- error) {
+	var err error
 	defer func() {
-		done <- true
+		done <- err
 	}()
 	//fmt.Printf("[%s] starting to work\n", us)
 	//defer fmt.Printf("[%s] finished working\n", us)
 	if _, err := us.writer.Write([]byte{'<'}); err != nil {
-		return fmt.Errorf("%s: writting '<': %s", us, err)
+		err = fmt.Errorf("%s: writting '<': %s", us, err)
+		return
 	}
 	randSleep(maxSleepMsecs)
 	if _, err := us.writer.Write([]byte{'>'}); err != nil {
-		return fmt.Errorf("%s: writting '>': %s", us, err)
+		err = fmt.Errorf("%s: writting '>': %s", us, err)
+		return
 	}
-	return nil
+	return
 }
 
 func randSleep(msecs int32) {

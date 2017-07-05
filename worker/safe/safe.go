@@ -39,23 +39,31 @@ func (s *Safe) String() string {
 }
 
 // Work implements Worker.
-func (s *Safe) Work(done chan<- bool) error {
+func (s *Safe) Work(done chan<- error) {
+	var err error
+	defer func() {
+		done <- err
+	}()
 	for {
 		locked, err := s.lock.TryLock()
 		if err != nil {
-			done <- true
-			return fmt.Errorf("%s: trying to lock: %s", s, err)
+			err = fmt.Errorf("%s: trying to lock: %s", s, err)
+			return
 		}
 		if locked {
 			break
 		}
 		randSleep(10)
 	}
-	s.unsafe.Work(done)
-	if err := s.lock.Unlock(); err != nil {
-		return fmt.Errorf("%s: unlocking: %s", s, err)
+	inner := make(chan error)
+	go s.unsafe.Work(inner)
+	if err = <-inner; err != nil {
+		return
 	}
-	return nil
+	if err = s.lock.Unlock(); err != nil {
+		err = fmt.Errorf("%s: unlocking: %s", s, err)
+		return
+	}
 }
 
 func randSleep(msecs int32) {
