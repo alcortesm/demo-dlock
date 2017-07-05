@@ -56,9 +56,9 @@ func run(safe bool) (garbled bool, path string, err error) {
 			return false, file.Name(),
 				fmt.Errorf("TODO safe workers not implemented yet")
 		} else {
-			w = unsafe.NewWorker(i, file, done)
+			w = unsafe.NewWorker(i, file)
 		}
-		go w.Work()
+		go w.Work(done)
 	}
 
 	for i := 0; i < nWriters; i++ {

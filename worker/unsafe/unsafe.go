@@ -19,19 +19,14 @@ const maxSleepMsecs = 100
 type UnSafe struct {
 	name   int
 	writer io.Writer
-	done   chan<- bool
 }
 
 // Returns a new unsafe worker, named after the given number (see the
-// Strig method).
-//
-// This worker will use the given writer as the shared resource and will
-// notify when the work is done by sending true to the given channel.
-func NewWorker(name int, writer io.Writer, done chan<- bool) *UnSafe {
+// Strig method).  It will use the given writer as the shared resource.
+func NewWorker(name int, writer io.Writer) *UnSafe {
 	return &UnSafe{
 		name:   name,
 		writer: writer,
-		done:   done,
 	}
 }
 
@@ -43,9 +38,9 @@ func (us *UnSafe) String() string {
 }
 
 // Work implements Worker.
-func (us *UnSafe) Work() error {
+func (us *UnSafe) Work(done chan<- bool) error {
 	defer func() {
-		us.done <- true
+		done <- true
 	}()
 	//fmt.Printf("[%s] starting to work\n", us)
 	//defer fmt.Printf("[%s] finished working\n", us)
